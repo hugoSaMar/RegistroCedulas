@@ -1,93 +1,131 @@
 use anchor_lang::prelude::*;
-declare_id!("Bf83QEa2253iwmKj3uRFETjoMuyN7CRRnetVa4uwyL5J");
+declare_id!("2EqYtyDvHGbiwiSD7DwNQqsaFq75cXYetJNR99qtQUAq");
 
 #[program]
 pub mod registro {
+
     use super::*;
 
-    pub fn create_registro(context: Context<NuevoRegistroCed>, nombre_reg: String) -> Result<()> {
-        let owner = context.accounts.owner.key();
-        let cedulas: Vec<Cedula> = Vec::new();
+    pub fn create_registro(context: Context<NuevoRegistro>, nombre_reg: String) -> Result<()> {
 
-        context.accounts.registro.set_inner(RegistroCed {
+        let owner = context.accounts.owner.key();
+        let cedulas = Vec::<Pubkey>::new(); 
+
+        let registro = Registro{
+
             owner,
             nombre_reg,
-            cedulas,
-        });
+            cedulas
+
+        };
+       
+        context.accounts.registro.set_inner(registro);
 
         Ok(())
     }
 
-    pub fn create_cedula(context: Context<NuevaCedula>, no_cedula:u32, folio: u32, curp: String,
+    pub fn create_cedula(context: Context<NuevaCedula>, nombre_reg:String, no_cedula:u32, folio: u32, curp: String,
                          nombres:String, ap_paterno:String, ap_materno:String, genero: String,
-                         institucion:String, profesion: String, entidad:String, 
+                         institucion:String, profesion: String, entidad:String,
                          ano_registro:u16) -> Result<()> {
-        
-        
-        let cedula: Cedula = Cedula { no_cedula, 
-                                      folio, 
-                                      curp, 
-                                      nombres, 
-                                      ap_paterno, 
-                                      ap_materno, 
-                                      genero, 
-                                      institucion, 
+       
+        let con_vida = true;
+
+        let cedula = Cedula { nombre_reg,
+                                      no_cedula,
+                                      folio,
+                                      curp,
+                                      nombres,
+                                      ap_paterno,
+                                      ap_materno,
+                                      genero,
+                                      institucion,
                                       profesion,
                                       entidad,
-                                      ano_registro, 
-                                        
-        }; 
+                                      ano_registro,
+                                      con_vida
+                                       
+        };
+       
+        context.accounts.cedula.set_inner(cedula);
+        context.accounts.registro.cedulas.push(context.accounts.cedula.key());
 
-        context.accounts.registro.cedulas.push(cedula);
+       
+        Ok(())
+    }
+
+    pub fn read_cedula(context: Context<ReadCedula>) -> Result<()> {
+       
+         let cedulas= &context.accounts.registro.cedulas;
+
+        msg!("---------------------------------");
+        msg!("{} ", context.accounts.registro.nombre_reg.clone());
+        msg!("---------------------------------\n");
+        msg!("---------------------------------\n");
+   
+
+        let _pos = cedulas
+
+            .iter().position(|&x| x == context.accounts.cedula.key() )
+            .ok_or(Errores::CedulaNoExiste)?;    
+            
+
+        msg!(
+
+            "{ } { } { }",
+            context.accounts.cedula.nombres,
+            context.accounts.cedula.ap_paterno,
+            context.accounts.cedula.ap_materno,
+
+            );
+        
+        msg!("No. de Cédula: {}", context.accounts.cedula.no_cedula);
+        msg!("Folio: {}", context.accounts.cedula.folio);
+        msg!("{}",context.accounts.cedula.curp);
+
+        Ok(())
+    } 
+
+
+     pub fn update_con_vida(context: Context<UpdateCedula>, _no_cedula : u32) -> Result<()> {
+        
+        let con_vida = context.accounts.cedula.con_vida;
+        let nuevo_estado = !con_vida;
+
+        context.accounts.cedula.con_vida = nuevo_estado;
+
+        msg!("La persona asociada a esta cédula {} está con vida: {}", _no_cedula, nuevo_estado);
 
         Ok(())
     }
 
-    pub fn read_cedula(context: Context<NuevaCedula>) -> Result<()> {
+
+    pub fn delete_cedula(context: Context<DeleteCedula>, _no_cedula: u32 ) -> Result<()> {
+
+
+        let cedulas = &mut context.accounts.registro.cedulas ;
+
+        let pos = cedulas
+
+            .iter().position(|&x| x == context.accounts.cedula.key() )
+            .ok_or(Errores::CedulaNoExiste)?;    
+            cedulas.remove(pos); 
+         
+        
         msg!(
-            "La lista de cedulas es: {:#?}",
-            context.accounts.registro.cedulas
+            "La cedula '{}' con el nombre '{}' fue eliminada exitosamente de {}!. Owner id: {}",
+            _no_cedula,
+            context.accounts.cedula.nombres,
+            context.accounts.registro.nombre_reg,
+            context.accounts.owner.key()
         );
 
         Ok(())
-    }
 
-  /*   pub fn eliminar_libro(context: Context<NuevoLibro>, nombre: String) -> Result<()> {
-        let libros = &mut context.accounts.biblioteca.libros;
+    } 
 
-        for libro in 0..libros.len() {
-            if libros[libro].nombre == nombre {
-                libros.remove(libro);
-                msg!("Libro {nombre} eliminado!");
-                return Ok(());
-            }
-        }
-
-        Err(Errores::LibroNoExiste.into())
-    } */
-
-    /*  pub fn alternar_estado(context: Context<NuevoLibro>, nombre: String) -> Result<()> {
-        let libros = &mut context.accounts.biblioteca.libros;
-
-        for libro in 0..libros.len() {
-            let estado = libros[libro].disponible;
-
-            if libros[libro].nombre == nombre {
-                let nuevo_estado = !estado;
-                libros[libro].disponible = nuevo_estado;
-
-                msg!(
-                    "El libro: {} ahora tiene un valor de disponibilidad: {}",
-                    nombre,
-                    nuevo_estado
-                );
-                return Ok(());
-            }
-        }
-
-        Err(Errores::CedulaNoExiste.into())
-    }*/
 }
+
 
 #[error_code]
 pub enum Errores {
@@ -100,23 +138,25 @@ pub enum Errores {
 
 #[account]
 #[derive(InitSpace)]
-pub struct RegistroCed {
+pub struct Registro {
     owner: Pubkey,
 
-    #[max_len(60)]
+    #[max_len(40)]
     nombre_reg: String,
 
-    #[max_len(100)]
-    cedulas: Vec<Cedula>,
+    #[max_len(10)]
+    cedulas: Vec<Pubkey>,
 }
 
-#[derive(AnchorSerialize, AnchorDeserialize, Clone, InitSpace, PartialEq, Debug)]
+#[account]
+#[derive(InitSpace)]         
 pub struct Cedula {
-    
-    #[max_len(12)]
-    no_cedula: u32,
 
-    #[max_len(12)]
+    #[max_len(40)]
+    nombre_reg: String,
+    
+    no_cedula: u32,
+ 
     folio: u32,
 
     #[max_len(18)]
@@ -140,35 +180,96 @@ pub struct Cedula {
     #[max_len(30)]
     profesion: String,
 
-    #[max_len(60)]    
+    #[max_len(20)]    
     entidad: String,
 
-    #[max_len(60)]
+   
     ano_registro: u16,
+
+    con_vida:bool,
 
 }
 
 #[derive(Accounts)]
-pub struct NuevoRegistroCed <'info> {
+pub struct NuevoRegistro <'info> {
+
     #[account(mut)]
     pub owner: Signer<'info>,
 
     #[account(
         init,
         payer = owner,
-        space = RegistroCed::INIT_SPACE + 8,
+        space = Registro::INIT_SPACE+ 4096,
         seeds = [b"registro", owner.key().as_ref()],
         bump
     )]
-    pub registro: Account<'info, RegistroCed>,
+    pub registro: Account<'info, Registro>,
 
     pub system_program: Program<'info, System>,
 }
 
 #[derive(Accounts)]
+#[instruction( nombre_reg:String, no_cedula:u32)]
+
 pub struct NuevaCedula<'info> {
+
+    #[account(mut)]
+    pub owner: Signer<'info>,
+     
+      
+
+    #[account(
+      init,
+      payer = owner,
+      space = Cedula::INIT_SPACE + 8,
+      seeds = [b"cedula" , no_cedula.to_le_bytes().as_ref() , owner.key().as_ref()],
+      bump
+    )]
+
+    pub cedula : Account<'info, Cedula>,
+
+    #[account(mut)]
+    pub registro: Account<'info, Registro>,
+
+    
+    pub system_program: Program<'info, System>,
+
+}
+
+#[derive(Accounts)]
+pub struct DeleteCedula<'info>{
+
+      #[account(mut)]
+      pub owner: Signer<'info>,
+
+      #[account(
+
+        mut,
+        close= owner,
+        constraint = cedula.nombre_reg == registro.nombre_reg @Errores::CedulaNoExiste
+
+      )]
+      
+      pub cedula: Account<'info, Cedula>,
+      
+      #[account(mut)]
+      pub registro : Account<'info, Registro>
+
+}
+
+#[derive(Accounts)]
+pub struct UpdateCedula<'info> {
     pub owner: Signer<'info>,
 
     #[account(mut)]
-    pub registro: Account<'info, RegistroCed>,
+    pub cedula: Account<'info, Cedula>,
+}
+
+#[derive(Accounts)]
+pub struct ReadCedula<'info> {
+    pub owner: Signer<'info>,
+
+    
+    pub cedula: Account<'info, Cedula>,
+    pub registro:Account<'info, Registro>,
 }
