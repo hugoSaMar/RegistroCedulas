@@ -2,16 +2,16 @@ use anchor_lang::prelude::*;
 declare_id!("EZCGbMn2wx2zRfHdd8W9xXFcEV634xhjcpnTB3WGkKxf");
 
 #[program]
-pub mod registro_cedulas {
+pub mod reg_cedulas {
 
     use super::*;
 
-    pub fn create_registro(context: Context<NuevoRegistro>, nombre_reg: String) -> Result<()> {
+    pub fn create_reg(context: Context<NuevoReg>, nombre_reg: String) -> Result<()> {
 
         let owner = context.accounts.owner.key();
         let cedulas = Vec::<Pubkey>::new();
 
-        let registro = Registro{
+        let reg = Reg{
 
             owner,
             nombre_reg,
@@ -19,7 +19,7 @@ pub mod registro_cedulas {
 
         };
        
-        context.accounts.registro.set_inner(registro);
+        context.accounts.reg.set_inner(reg);
 
         Ok(())
     }
@@ -50,7 +50,7 @@ pub mod registro_cedulas {
         };
        
         context.accounts.cedula.set_inner(cedula);
-        context.accounts.registro.cedulas.push(context.accounts.cedula.key());
+        context.accounts.reg.cedulas.push(context.accounts.cedula.key());
 
        
         Ok(())
@@ -58,10 +58,10 @@ pub mod registro_cedulas {
 
     pub fn read_cedula(context: Context<ReadCedula>) -> Result<()> {
        
-         let cedulas= &context.accounts.registro.cedulas;
+         let cedulas= &context.accounts.reg.cedulas;
 
         msg!("---------------------------------");
-        msg!("{} ", context.accounts.registro.nombre_reg.clone());
+        msg!("{} ", context.accounts.reg.nombre_reg.clone());
         msg!("---------------------------------\n");
         msg!("---------------------------------\n");
    
@@ -105,7 +105,7 @@ pub mod registro_cedulas {
     pub fn delete_cedula(context: Context<DeleteCedula>, _no_cedula: String ) -> Result<()> {
 
 
-        let cedulas = &mut context.accounts.registro.cedulas ;
+        let cedulas = &mut context.accounts.reg.cedulas ;
 
         let pos = cedulas
 
@@ -118,7 +118,7 @@ pub mod registro_cedulas {
             "La cedula '{}' con el nombre '{}' fue eliminada exitosamente de {}!. Owner id: {}",
             _no_cedula,
             context.accounts.cedula.nombres,
-            context.accounts.registro.nombre_reg,
+            context.accounts.reg.nombre_reg,
             context.accounts.owner.key()
         );
 
@@ -140,7 +140,7 @@ pub enum Errores {
 
 #[account]
 #[derive(InitSpace)]
-pub struct Registro {
+pub struct Reg {
     owner: Pubkey,
 
     #[max_len(40)]
@@ -195,7 +195,7 @@ pub struct Cedula {
 }
 
 #[derive(Accounts)]
-pub struct NuevoRegistro <'info> {
+pub struct NuevoReg<'info> {
 
     #[account(mut)]
     pub owner: Signer<'info>,
@@ -203,11 +203,11 @@ pub struct NuevoRegistro <'info> {
     #[account(
         init,
         payer = owner,
-        space = Registro::INIT_SPACE+ 8,
-        seeds = [b"registro", owner.key().as_ref()],
+        space = Reg::INIT_SPACE+ 8,
+        seeds = [b"reg", owner.key().as_ref()],
         bump
     )]
-    pub registro: Account<'info, Registro>,
+    pub reg: Account<'info, Reg>,
 
     pub system_program: Program<'info, System>,
 }
@@ -231,7 +231,7 @@ pub struct NuevaCedula<'info> {
     pub cedula : Account<'info, Cedula>,
 
     #[account(mut)]
-    pub registro: Account<'info, Registro>,
+    pub reg: Account<'info, Reg>,
 
    
     pub system_program: Program<'info, System>,
@@ -248,14 +248,14 @@ pub struct DeleteCedula<'info>{
 
         mut,
         close= owner,
-        constraint = cedula.nombre_reg == registro.nombre_reg @Errores::CedulaNoExiste
+        constraint = cedula.nombre_reg == reg.nombre_reg @Errores::CedulaNoExiste
 
       )]
      
       pub cedula: Account<'info, Cedula>,
      
       #[account(mut)]
-      pub registro : Account<'info, Registro>
+      pub reg : Account<'info, Reg>
 
 
 }
@@ -274,5 +274,6 @@ pub struct ReadCedula<'info> {
 
    
     pub cedula: Account<'info, Cedula>,
-    pub registro:Account<'info, Registro>,
+    pub reg:Account<'info, Reg>,
 }
+
