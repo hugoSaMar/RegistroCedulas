@@ -70,7 +70,7 @@ async function createCedula(nombreRegistro: string, n_cedula: string, folio: str
   const [pda_cedula] = pdaCedula(n_cedula); // se determina la cuenta de la cédula a crear
   const [pda_registro] = pdaRegistro(nombreRegistro); // se obtiene la cuenta del registro
  
-  const txHash = await program.methods
+  const txHash = await pg.program.methods
     .createCedula( nombreRegistro, n_cedula, folio, curp, nombres, apPaterno, apMaterno, genero, institucion, profesion, entidad, anoRegistro ) // agregar_libro
     .accounts({
       // cuentas del contexto
@@ -89,7 +89,7 @@ async function updateConVida(n_cedula) {
   // Modificar Libro
   const [pda_cedula] = pdaCedula(n_cedula); // se determina la cuenta del libro
 
-  const txHash = await program.methods
+  const txHash = await pg.program.methods
     .updateConVida(n_cedula) // alternar_estado
     .accounts({
       // cuentas del contexto
@@ -107,7 +107,7 @@ async function deleteCedula(n_cedula) {
   // Eliminar Libro
   const [pda_cedula] = pdaCedula(n_cedula); // se determina la cuenta del libro
   const [pda_registro] = pdaRegistro(nombreRegistro); // se obtiene la cuenta de la biblioteca
-  const txHash = await program.methods
+  const txHash = await pg.program.methods
     .deleteCedula(n_cedula) // eliminar_libro
     .accounts({
       // cuentas del contexto
@@ -140,7 +140,7 @@ async function readCedula(nombreRegistro) {
 
   try {
     // Se accede a los datos de la cuenta (registro)
-    const registroAccount = await program.account.registro.fetch(
+    const registroAccount = await pg.program.account.registro.fetch(
       pda_registro
     );
    
@@ -164,7 +164,7 @@ async function readCedula(nombreRegistro) {
     for (let i = 0; i < numero_cedulas; i++) {
       const cedulaKey = registroAccount.cedulas[i];
 
-      const cedulaAccount = await program.account.cedula.fetch(cedulaKey);
+      const cedulaAccount = await pg.program.account.cedula.fetch(cedulaKey);
      
 // Finaliza mostrando en la terminal la informacion de cada cédula
       console.log(`${cedulaAccount.nombres} ${cedulaAccount.apPaterno} ${cedulaAccount.apMaterno}
@@ -202,6 +202,6 @@ createCedula(nombreRegistro, "12365860", "104", "GFED650923TYUJKI54", "Luis", "G
 
 readCedula(nombreRegistro);
 
-updateConVida ("12365856");*/
+updateConVida ("12365856");
 
-//deleteCedula("12365857");
+deleteCedula("12365857");*/
