@@ -1,13 +1,13 @@
 import { PublicKey } from "@solana/web3.js";
 
 ////////////////// Constantes ////////////////////
-const nombreRegistro = "Registro de Cédulas Profesionales"; // Nombre de la biblioteca
+const nombreRegistro = "Registro de Cédulas"; // Nombre de la biblioteca
 const owner = pg.wallet.publicKey; // Wallet
 
 //////////////////// Client Test Logs ////////////////////
 console.log("My address:", owner.toString()); // Ver el adress
 const balance = await pg.connection.getBalance(owner);
-console.log(`My balance: ${balance / web3.LAMPORTS_PER_SOL} SOL`);  // Ver el la cantidad de tokens de solana
+console.log(`My balance: ${balance / web3.LAMPORTS_PER_SOL} SOL`); // Ver el la cantidad de tokens de solana
 
 //////////////////// OBTENER PDAs ////////////////////
 /*
@@ -27,7 +27,7 @@ function pdaRegistro(nombreRegistro) {
   return PublicKey.findProgramAddressSync(
     [
       Buffer.from("registro"), // Semilla 1: b"biblioteca"
-     
+
       owner.toBuffer(), // Semilla 3: wallet -> Pubkey
     ],
     pg.PROGRAM_ID // Program ID: Siempre va al final
@@ -50,13 +50,12 @@ function pdaCedula(n_cedula) {
 async function createRegistro(nombreRegistro) {
   const [pda_registro] = pdaRegistro(nombreRegistro); // Primero se obtiene la cuenta del registro
 
-  const txHash = await pg.program.methods// mediante la libreria pg (solana playground) se acceden a los metodos del programa
-    .createRegistro(nombreRegistro) // crear biblioteca
+  const txHash = await pg.program.methods // mediante la libreria pg (solana playground) se acceden a los metodos del programa
+    .createReg(nombreRegistro) // crear biblioteca
     .accounts({
       // Se agregan las cuentas de las que depende (Contexto del struct NuevaBiblioteca)
       owner: owner,
-       registro : pda_registro,
-
+      reg: pda_registro,
     })
     .rpc();
 
@@ -65,18 +64,44 @@ async function createRegistro(nombreRegistro) {
 
 //////////////////// Agregar Cédula////////////////////
 // Para crear un libro solo es necesario pasar el libro y el numero de paginas. El estado se define automaticamente en el programa
-async function createCedula(nombreRegistro: string, n_cedula: string, folio: string, curp: string, nombres: string, apPaterno: string, apMaterno: string, genero: string, institucion: string, profesion: String, entidad: String, anoRegistro: String) {
+async function createCedula(
+  nombreRegistro: string,
+  n_cedula: string,
+  folio: string,
+  curp: string,
+  nombres: string,
+  apPaterno: string,
+  apMaterno: string,
+  genero: string,
+  institucion: string,
+  profesion: String,
+  entidad: String,
+  anoRegistro: String
+) {
   // Agregar Cédula
   const [pda_cedula] = pdaCedula(n_cedula); // se determina la cuenta de la cédula a crear
   const [pda_registro] = pdaRegistro(nombreRegistro); // se obtiene la cuenta del registro
- 
+
   const txHash = await pg.program.methods
-    .createCedula( nombreRegistro, n_cedula, folio, curp, nombres, apPaterno, apMaterno, genero, institucion, profesion, entidad, anoRegistro ) // agregar_libro
+    .createCedula(
+      nombreRegistro,
+      n_cedula,
+      folio,
+      curp,
+      nombres,
+      apPaterno,
+      apMaterno,
+      genero,
+      institucion,
+      profesion,
+      entidad,
+      anoRegistro
+    ) // agregar_libro
     .accounts({
       // cuentas del contexto
       owner: owner,
       cedula: pda_cedula,
-      registro: pda_registro,
+      reg: pda_registro,
     })
     .rpc();
 
@@ -94,7 +119,7 @@ async function updateConVida(n_cedula) {
     .accounts({
       // cuentas del contexto
       owner: owner,
-      cedula : pda_cedula,
+      cedula: pda_cedula,
     })
     .rpc();
 
@@ -113,10 +138,10 @@ async function deleteCedula(n_cedula) {
       // cuentas del contexto
       owner: owner,
       cedula: pda_cedula,
-      registro: pda_registro,
+      reg: pda_registro,
     })
     .rpc();
- 
+
   console.log("txHash: ", txHash);
 }
 
@@ -140,41 +165,42 @@ async function readCedula(nombreRegistro) {
 
   try {
     // Se accede a los datos de la cuenta (registro)
-    const registroAccount = await pg.program.account.registro.fetch(
-      pda_registro
-    );
-   
+    const registroAccount = await pg.program.account.reg.fetch(pda_registro);
+
     // Mediante el .length se obtiene el tamaño del vector de libros en laa biblioteca
     const numero_cedulas = registroAccount.cedulas.length;
-   
+
     // Se verifican si hay cédulas en el vector
     if (!registroAccount.cedulas || numero_cedulas === 0) {
       console.log("El registro se encuentra vacío");
       return;
     }
-   
+
     // Se imprime el valor en la consola
     console.log("Cantidad de cédulas:", numero_cedulas);
-   
+
     // Se itera cada cuenta (cedula) del vector (registro) y se obtiene la informacion asociada
-   
-   
-    console.log(nombreRegistro+"\n");
+
+    console.log(nombreRegistro + "\n");
 
     for (let i = 0; i < numero_cedulas; i++) {
       const cedulaKey = registroAccount.cedulas[i];
 
       const cedulaAccount = await pg.program.account.cedula.fetch(cedulaKey);
-     
-// Finaliza mostrando en la terminal la informacion de cada cédula
-      console.log(`${cedulaAccount.nombres} ${cedulaAccount.apPaterno} ${cedulaAccount.apMaterno}
- * No. de cédula: ${cedulaAccount.noCedula} \n* Folio: ${cedulaAccount.folio}
- * CURP: ${cedulaAccount.curp} \n* Género: ${cedulaAccount.genero} \n* Institución: ${cedulaAccount.institucion}
- * Entidad: ${cedulaAccount.entidad} \n* Año de registro:${cedulaAccount.anoRegistro} \n* Con Vida: ${cedulaAccount.conVida}
- * Dirección(PDA): ${cedulaKey.toBase58()}\n`);
-       
-    }
 
+      // Finaliza mostrando en la terminal la informacion de cada cédula
+      console.log(`${cedulaAccount.nombres} ${cedulaAccount.apPaterno} ${
+        cedulaAccount.apMaterno
+      }
+ * No. de cédula: ${cedulaAccount.noCedula} \n* Folio: ${cedulaAccount.folio}
+ * CURP: ${cedulaAccount.curp} \n* Género: ${
+        cedulaAccount.genero
+      } \n* Institución: ${cedulaAccount.institucion}
+ * Entidad: ${cedulaAccount.entidad} \n* Año de registro:${
+        cedulaAccount.anoRegistro
+      } \n* Con Vida: ${cedulaAccount.conVida}
+ * Dirección(PDA): ${cedulaKey.toBase58()}\n`);
+    }
   } catch (error) {
     console.error("Error viendo cedulas:", error);
 
