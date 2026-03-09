@@ -1,16 +1,21 @@
-////////Imports ////////////////////
+
+import * as anchor from "@coral-xyz/anchor";
+import { Program } from "@coral-xyz/anchor";
+import { Cedulas3 } from "../target/types/cedulas3";
 import { PublicKey } from "@solana/web3.js";
 
+anchor.setProvider(anchor.AnchorProvider.env());
+const provider = anchor.AnchorProvider.env();
+anchor.setProvider(provider);
+const wallet = anchor.getProvider().wallet;
+const program = anchor.workspace.Cedulas3 as Program <Cedulas3> ;
 ////////////////// Constantes ////////////////////
-const n_registro = "Registro de Cédulas Profesionales"; // Nombre de la biblioteca
-const owner = pg.wallet.publicKey; // Wallet
+const nombreRegistro = "Registro de Cédulas Profesionales"; // Nombre de la biblioteca
+const owner = wallet.publicKey; // Wallet
 
 //////////////////// Client Test Logs ////////////////////
-console.log("My address:", owner.toString()); // Ver el adress
-const balance = await pg.connection.getBalance(owner);
-console.log(`My balance: ${balance / web3.LAMPORTS_PER_SOL} SOL`); // Ver el la cantidad de tokens de solana
+console.log(wallet.publicKey+"  "+"  ", program.idl); // Ver el adress
 
-//////////////////// FUNCIONES ////////////////////
 
 //////////////////// OBTENER PDAs ////////////////////
 /*
@@ -25,15 +30,15 @@ correspondiente. Se recomienda no usar valores sencillos (que no solo dependan d
 compuestas de valores redundantes (como el program id o alguna cuenta padre).
 */
 //////////////////// Biblioteca ////////////////////
-function pdaRegistro(n_registro) {
-  console.log(n_registro);
+function pdaRegistro(nombreRegistro) {
+  console.log(nombreRegistro);
   return PublicKey.findProgramAddressSync(
     [
       Buffer.from("registro"), // Semilla 1: b"biblioteca"
-      // Buffer.from(n_biblioteca), // Semilla 2: nombre de la biblioteca  -> String
+     
       owner.toBuffer(), // Semilla 3: wallet -> Pubkey
     ],
-    pg.PROGRAM_ID // Program ID: Siempre va al final
+    program.programId // Program ID: Siempre va al final
   );
 }
 //////////////////// Libro ////////////////////
@@ -44,36 +49,37 @@ function pdaCedula(n_cedula) {
       Buffer.from(n_cedula), // Semilla 2: nombre del libro: -> String
       owner.toBuffer(), // Semilla 3: wallet -> Pubkey
     ],
-    pg.PROGRAM_ID // Program ID: Siempre va al final
+    program.programId // Program ID: Siempre va al final
   );
 }
 
-//////////////////// Crear Biblioteca ////////////////////
-// Para crear la biblioteca solo es necesario el nombre que tendra
-async function createRegistro(n_registro) {
-  const [pda_registro] = pdaRegistro(n_registro); // Primero se obtiene la cuenta de la biblioteca
+//////////////////// Crear Registro ////////////////////
+// Para crear el registro solo es necesario el nombre que tendra
+async function createRegistro(nombreRegistro) {
+  const [pda_registro] = pdaRegistro(nombreRegistro); // Primero se obtiene la cuenta del registro
 
-  const txHash = await pg.program.methods // mediante la libreria pg (solana playground) se acceden a los metodos del programa
-    .createRegistro(n_registro) // crear biblioteca
+  const txHash = await program.methods// mediante la libreria pg (solana playground) se acceden a los metodos del programa
+    .createRegistro(nombreRegistro) // crear biblioteca
     .accounts({
       // Se agregan las cuentas de las que depende (Contexto del struct NuevaBiblioteca)
       owner: owner,
-      registro: pda_registro,
+       registro : pda_registro,
+
     })
     .rpc();
 
   console.log("txHash: ", txHash);
 }
 
-//////////////////// Agregar Libro ////////////////////
+//////////////////// Agregar Cédula////////////////////
 // Para crear un libro solo es necesario pasar el libro y el numero de paginas. El estado se define automaticamente en el programa
-async function createCedula(n_registro, n_cedula, folio, curp, nombres, apPaterno, apMaterno, genero, institucion, profesion, entidad, anoRegistro) {
-  // Agregar Libro
-  const [pda_cedula] = pdaCedula(n_cedula); // se determina la cuenta del libro
-  const [pda_registro] = pdaRegistro(n_registro); // se obtiene la cuenta de la biblioteca
-
-  const txHash = await pg.program.methods
-    .createCedula(n_registro, n_cedula, folio, curp, nombres, apPaterno, apMaterno, genero, institucion, profesion, entidad, anoRegistro ) // agregar_libro
+async function createCedula(nombreRegistro: string, n_cedula: string, folio: string, curp: string, nombres: string, apPaterno: string, apMaterno: string, genero: string, institucion: string, profesion: String, entidad: String, anoRegistro: String) {
+  // Agregar Cédula
+  const [pda_cedula] = pdaCedula(n_cedula); // se determina la cuenta de la cédula a crear
+  const [pda_registro] = pdaRegistro(nombreRegistro); // se obtiene la cuenta del registro
+ 
+  const txHash = await program.methods
+    .createCedula( nombreRegistro, n_cedula, folio, curp, nombres, apPaterno, apMaterno, genero, institucion, profesion, entidad, anoRegistro ) // agregar_libro
     .accounts({
       // cuentas del contexto
       owner: owner,
@@ -90,9 +96,8 @@ async function createCedula(n_registro, n_cedula, folio, curp, nombres, apPatern
 async function updateConVida(n_cedula) {
   // Modificar Libro
   const [pda_cedula] = pdaCedula(n_cedula); // se determina la cuenta del libro
-  const [pda_registro] = pdaRegistro(n_registro); // se obtiene la cuenta de la biblioteca
 
-  const txHash = await pg.program.methods
+  const txHash = await program.methods
     .updateConVida(n_cedula) // alternar_estado
     .accounts({
       // cuentas del contexto
@@ -109,21 +114,21 @@ async function updateConVida(n_cedula) {
 async function deleteCedula(n_cedula) {
   // Eliminar Libro
   const [pda_cedula] = pdaCedula(n_cedula); // se determina la cuenta del libro
-  const [pda_registro] = pdaRegistro(n_registro); // se obtiene la cuenta de la biblioteca
-  const txHash = await pg.program.methods
+  const [pda_registro] = pdaRegistro(nombreRegistro); // se obtiene la cuenta de la biblioteca
+  const txHash = await program.methods
     .deleteCedula(n_cedula) // eliminar_libro
     .accounts({
       // cuentas del contexto
       owner: owner,
-      cedula: pdaCedula,
+      cedula: pda_cedula,
       registro: pda_registro,
     })
     .rpc();
-
+ 
   console.log("txHash: ", txHash);
 }
 
-//////////////////// Ver Libros ////////////////////
+//////////////////// Ver Cédulas ////////////////////
 /*
  Anteriormente, en la version anterior de la biblioteca, esta instruccion se encotraba implementada dentro del Solana Program, pero... ¿porque ya no?
  En la prinmera version de la biblioteca los libros eran structs contenidos en un vector dentro de la cuenta biblioteca. Al ser elementos de un vector
@@ -137,44 +142,47 @@ Para lograr hacerlo es necesario realizar los siguientes pasos:
 3. Por cada direccion, obtener la informacion del libro
 4. Mostrarla con console.log
 */
-async function readCedula(n_registro) {
-  // Ver Libros
-  const [pda_registro] = pdaRegistro(n_registro); // se obtiene la cuenta de la biblioteca
+async function readCedula(nombreRegistro) {
+  // Ver Cédulas
+  const [pda_registro] = pdaRegistro(nombreRegistro); // se obtiene la cuenta de la biblioteca
 
   try {
-    // Se accede a los datos de la cuenta (biblioteca)
-    const registroAccount = await pg.program.account.registro.fetch(
+    // Se accede a los datos de la cuenta (registro)
+    const registroAccount = await program.account.registro.fetch(
       pda_registro
     );
-
+   
     // Mediante el .length se obtiene el tamaño del vector de libros en laa biblioteca
     const numero_cedulas = registroAccount.cedulas.length;
-
-    // Se verifican si hay libros en el vector
+   
+    // Se verifican si hay cédulas en el vector
     if (!registroAccount.cedulas || numero_cedulas === 0) {
       console.log("El registro se encuentra vacío");
       return;
     }
-
+   
     // Se imprime el valor en la consola
-    console.log("Cantidad de libros:", numero_cedulas);
+    console.log("Cantidad de cédulas:", numero_cedulas);
+   
+    // Se itera cada cuenta (cedula) del vector (registro) y se obtiene la informacion asociada
+   
+   
+    console.log(nombreRegistro+"\n");
 
-    // Se itera cada cuenta (libro) del vector (biblioteca) y se obtiene la informacion asociada
     for (let i = 0; i < numero_cedulas; i++) {
       const cedulaKey = registroAccount.cedulas[i];
 
-      const cedulaAccount = await pg.program.account.cedula.fetch(cedulaKey);
-      console.log(cedulaAccount);
-      // Finaliza mostrando en la terminal la informacion de cada libro
-      console.log(`${n_registro}\n
-        ${cedulaAccount.nombres}" "${cedulaAccount.apPaterno}" "${cedulaAccount.apMaterno} \n
-        * No. de cédula: ${cedulaAccount.noCedula} \n * Folio: ${cedulaAccount.folio} \n
-        * CURP: ${cedulaAccount.curp} \n * Género: ${cedulaAccount.genero} \n * Institución:
-        ${cedulaAccount.institucion} \n * Entidad: ${cedulaAccount.entidad} \n * Año de registro:
-        ${cedulaAccount.anoRegistro} \n * Con Vida: ${cedulaAccount.conVida}
-        \n * Dirección(PDA): ${cedulaKey.toBase58()}`);
-
+      const cedulaAccount = await program.account.cedula.fetch(cedulaKey);
+     
+// Finaliza mostrando en la terminal la informacion de cada cédula
+      console.log(`${cedulaAccount.nombres} ${cedulaAccount.apPaterno} ${cedulaAccount.apMaterno}
+ * No. de cédula: ${cedulaAccount.noCedula} \n* Folio: ${cedulaAccount.folio}
+ * CURP: ${cedulaAccount.curp} \n* Género: ${cedulaAccount.genero} \n* Institución: ${cedulaAccount.institucion}
+ * Entidad: ${cedulaAccount.entidad} \n* Año de registro:${cedulaAccount.anoRegistro} \n* Con Vida: ${cedulaAccount.conVida}
+ * Dirección(PDA): ${cedulaKey.toBase58()}\n`);
+       
     }
+
   } catch (error) {
     console.error("Error viendo cedulas:", error);
 
@@ -188,14 +196,20 @@ async function readCedula(n_registro) {
   }
 }
 
-//createRegistro(n_registro);
+/*createRegistro(nombreRegistro);
 
-createCedula(n_registro, "20125482", "100", "FASD800734lkujnh12", "Jorge", "Gutierrez", "Roldán", "Masc",
-             "Universidad Galaxia", "Lic. en Enfermería", "Colima", "2005");
-// eliminarLibro("El alquimista");
-// cambiarEstado("El alquimista 2");
-//readCedula(n_registro);
+createCedula(nombreRegistro, "12365856", "100", "GFED650923TYUJKI50", "Pedro", "Rodríguez", "Flores", "Fem", "Univ 4", "Lic. en Administración", "Morelos", "2002");
 
-// solana confirm -v <txHash>
+createCedula(nombreRegistro, "12365857", "101", "GFED650923TYUJKI51", "María", "García", "López", "Fem", "Univ 5", "Lic. en Derecho", "Puebla", "2003");
 
+createCedula(nombreRegistro, "12365858", "102", "GFED650923TYUJKI52", "Juan", "Martínez", "Sánchez", "Masc", "Univ 6", "Lic. en Medicina", "Jalisco", "2004");
 
+createCedula(nombreRegistro, "12365859", "103", "GFED650923TYUJKI53", "Ana", "López", "Gómez", "Fem", "Univ 7", "Lic. en Psicología", "Chiapas", "2005");
+
+createCedula(nombreRegistro, "12365860", "104", "GFED650923TYUJKI54", "Luis", "González", "Hernández", "Masc", "Univ 8", "Lic. en Ingeniería Civil", "Veracruz", "2006");*/
+
+readCedula(nombreRegistro);
+
+//updateConVida ("12365856");
+
+//deleteCedula("12365857");
