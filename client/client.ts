@@ -1,21 +1,13 @@
-
-import * as anchor from "@coral-xyz/anchor";
-import { Program } from "@coral-xyz/anchor";
-import { Cedulas3 } from "../target/types/cedulas3";
 import { PublicKey } from "@solana/web3.js";
 
-anchor.setProvider(anchor.AnchorProvider.env());
-const provider = anchor.AnchorProvider.env();
-anchor.setProvider(provider);
-const wallet = anchor.getProvider().wallet;
-const program = anchor.workspace.Cedulas3 as Program <Cedulas3> ;
 ////////////////// Constantes ////////////////////
 const nombreRegistro = "Registro de Cédulas Profesionales"; // Nombre de la biblioteca
-const owner = wallet.publicKey; // Wallet
+const owner = pg.wallet.publicKey; // Wallet
 
 //////////////////// Client Test Logs ////////////////////
-console.log(wallet.publicKey+"  "+"  ", program.idl); // Ver el adress
-
+console.log("My address:", owner.toString()); // Ver el adress
+const balance = await pg.connection.getBalance(owner);
+console.log(`My balance: ${balance / web3.LAMPORTS_PER_SOL} SOL`);  // Ver el la cantidad de tokens de solana
 
 //////////////////// OBTENER PDAs ////////////////////
 /*
@@ -38,7 +30,7 @@ function pdaRegistro(nombreRegistro) {
      
       owner.toBuffer(), // Semilla 3: wallet -> Pubkey
     ],
-    program.programId // Program ID: Siempre va al final
+    pg.PROGRAM_ID // Program ID: Siempre va al final
   );
 }
 //////////////////// Libro ////////////////////
@@ -49,7 +41,7 @@ function pdaCedula(n_cedula) {
       Buffer.from(n_cedula), // Semilla 2: nombre del libro: -> String
       owner.toBuffer(), // Semilla 3: wallet -> Pubkey
     ],
-    program.programId // Program ID: Siempre va al final
+    pg.PROGRAM_ID // Program ID: Siempre va al final
   );
 }
 
@@ -58,7 +50,7 @@ function pdaCedula(n_cedula) {
 async function createRegistro(nombreRegistro) {
   const [pda_registro] = pdaRegistro(nombreRegistro); // Primero se obtiene la cuenta del registro
 
-  const txHash = await program.methods// mediante la libreria pg (solana playground) se acceden a los metodos del programa
+  const txHash = await pg.program.methods// mediante la libreria pg (solana playground) se acceden a los metodos del programa
     .createRegistro(nombreRegistro) // crear biblioteca
     .accounts({
       // Se agregan las cuentas de las que depende (Contexto del struct NuevaBiblioteca)
@@ -206,10 +198,10 @@ createCedula(nombreRegistro, "12365858", "102", "GFED650923TYUJKI52", "Juan", "M
 
 createCedula(nombreRegistro, "12365859", "103", "GFED650923TYUJKI53", "Ana", "López", "Gómez", "Fem", "Univ 7", "Lic. en Psicología", "Chiapas", "2005");
 
-createCedula(nombreRegistro, "12365860", "104", "GFED650923TYUJKI54", "Luis", "González", "Hernández", "Masc", "Univ 8", "Lic. en Ingeniería Civil", "Veracruz", "2006");*/
+createCedula(nombreRegistro, "12365860", "104", "GFED650923TYUJKI54", "Luis", "González", "Hernández", "Masc", "Univ 8", "Lic. en Ingeniería Civil", "Veracruz", "2006");
 
 readCedula(nombreRegistro);
 
-//updateConVida ("12365856");
+updateConVida ("12365856");*/
 
 //deleteCedula("12365857");
