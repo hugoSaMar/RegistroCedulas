@@ -1,15 +1,15 @@
 use anchor_lang::prelude::*;
-declare_id!("2EqYtyDvHGbiwiSD7DwNQqsaFq75cXYetJNR99qtQUAq");
+declare_id!("");
 
 #[program]
-pub mod registro {
+pub mod registro_cedulas {
 
     use super::*;
 
     pub fn create_registro(context: Context<NuevoRegistro>, nombre_reg: String) -> Result<()> {
 
         let owner = context.accounts.owner.key();
-        let cedulas = Vec::<Pubkey>::new(); 
+        let cedulas = Vec::<Pubkey>::new();
 
         let registro = Registro{
 
@@ -23,11 +23,13 @@ pub mod registro {
 
         Ok(())
     }
+   
 
-    pub fn create_cedula(context: Context<NuevaCedula>, nombre_reg:String, no_cedula:u32, folio: u32, curp: String,
+
+    pub fn create_cedula(context: Context<NuevaCedula>, nombre_reg:String, no_cedula:String, folio: String, curp: String,
                          nombres:String, ap_paterno:String, ap_materno:String, genero: String,
                          institucion:String, profesion: String, entidad:String,
-                         ano_registro:u16) -> Result<()> {
+                         ano_registro:String) -> Result<()> {
        
         let con_vida = true;
 
@@ -68,7 +70,7 @@ pub mod registro {
 
             .iter().position(|&x| x == context.accounts.cedula.key() )
             .ok_or(Errores::CedulaNoExiste)?;    
-            
+           
 
         msg!(
 
@@ -78,29 +80,29 @@ pub mod registro {
             context.accounts.cedula.ap_materno,
 
             );
-        
-        msg!("No. de Cédula: {}", context.accounts.cedula.no_cedula);
+       
+        msg!("No. de C dula: {}", context.accounts.cedula.no_cedula);
         msg!("Folio: {}", context.accounts.cedula.folio);
         msg!("{}",context.accounts.cedula.curp);
-
-        Ok(())
-    } 
-
-
-     pub fn update_con_vida(context: Context<UpdateCedula>, _no_cedula : u32) -> Result<()> {
-        
-        let con_vida = context.accounts.cedula.con_vida;
-        let nuevo_estado = !con_vida;
-
-        context.accounts.cedula.con_vida = nuevo_estado;
-
-        msg!("La persona asociada a esta cédula {} está con vida: {}", _no_cedula, nuevo_estado);
 
         Ok(())
     }
 
 
-    pub fn delete_cedula(context: Context<DeleteCedula>, _no_cedula: u32 ) -> Result<()> {
+     pub fn update_con_vida(context: Context<UpdateCedula>, _no_cedula : String) -> Result<()> {
+       
+        let con_vida = context.accounts.cedula.con_vida;
+        let nuevo_estado = !con_vida;
+
+        context.accounts.cedula.con_vida = nuevo_estado;
+
+        msg!("La persona asociada a esta c dula {} est  con vida: {}", _no_cedula, nuevo_estado);
+
+        Ok(())
+    }
+
+
+    pub fn delete_cedula(context: Context<DeleteCedula>, _no_cedula: String ) -> Result<()> {
 
 
         let cedulas = &mut context.accounts.registro.cedulas ;
@@ -109,9 +111,9 @@ pub mod registro {
 
             .iter().position(|&x| x == context.accounts.cedula.key() )
             .ok_or(Errores::CedulaNoExiste)?;    
-            cedulas.remove(pos); 
+            cedulas.remove(pos);
          
-        
+       
         msg!(
             "La cedula '{}' con el nombre '{}' fue eliminada exitosamente de {}!. Owner id: {}",
             _no_cedula,
@@ -122,7 +124,7 @@ pub mod registro {
 
         Ok(())
 
-    } 
+    }
 
 }
 
@@ -132,7 +134,7 @@ pub enum Errores {
     #[msg("Error, no eres el propietario de la cuenta.")]
     NoEresElOwner,
 
-    #[msg("Error, no existe una cédula asociada a este número.")]
+    #[msg("Error, no existe una c dula asociada a este n mero.")]
     CedulaNoExiste,
 }
 
@@ -149,15 +151,17 @@ pub struct Registro {
 }
 
 #[account]
-#[derive(InitSpace)]         
+#[derive(InitSpace)]        
 pub struct Cedula {
 
     #[max_len(40)]
     nombre_reg: String,
-    
-    no_cedula: u32,
- 
-    folio: u32,
+
+   #[max_len(9)]
+    no_cedula: String,
+
+   #[max_len(10)]
+    folio: String,
 
     #[max_len(18)]
     curp: String,
@@ -183,8 +187,8 @@ pub struct Cedula {
     #[max_len(20)]    
     entidad: String,
 
-   
-    ano_registro: u16,
+   #[max_len(5)]
+    ano_registro: String,
 
     con_vida:bool,
 
@@ -199,7 +203,7 @@ pub struct NuevoRegistro <'info> {
     #[account(
         init,
         payer = owner,
-        space = Registro::INIT_SPACE+ 4096,
+        space = Registro::INIT_SPACE+ 8,
         seeds = [b"registro", owner.key().as_ref()],
         bump
     )]
@@ -209,29 +213,27 @@ pub struct NuevoRegistro <'info> {
 }
 
 #[derive(Accounts)]
-#[instruction( nombre_reg:String, no_cedula:u32)]
+#[instruction( nombre_reg:String, no_cedula:String)]
 
 pub struct NuevaCedula<'info> {
 
     #[account(mut)]
     pub owner: Signer<'info>,
      
-      
 
     #[account(
       init,
       payer = owner,
       space = Cedula::INIT_SPACE + 8,
-      seeds = [b"cedula" , no_cedula.to_le_bytes().as_ref() , owner.key().as_ref()],
+      seeds = [b"cedula" , no_cedula.as_bytes() , owner.key().as_ref()],
       bump
     )]
-
     pub cedula : Account<'info, Cedula>,
 
     #[account(mut)]
     pub registro: Account<'info, Registro>,
 
-    
+   
     pub system_program: Program<'info, System>,
 
 }
@@ -249,11 +251,12 @@ pub struct DeleteCedula<'info>{
         constraint = cedula.nombre_reg == registro.nombre_reg @Errores::CedulaNoExiste
 
       )]
-      
+     
       pub cedula: Account<'info, Cedula>,
-      
+     
       #[account(mut)]
       pub registro : Account<'info, Registro>
+
 
 }
 
@@ -269,7 +272,7 @@ pub struct UpdateCedula<'info> {
 pub struct ReadCedula<'info> {
     pub owner: Signer<'info>,
 
-    
+   
     pub cedula: Account<'info, Cedula>,
     pub registro:Account<'info, Registro>,
 }
