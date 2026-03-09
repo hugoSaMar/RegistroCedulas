@@ -1,5 +1,5 @@
 use anchor_lang::prelude::*;
-declare_id!("");
+declare_id!("EZCGbMn2wx2zRfHdd8W9xXFcEV634xhjcpnTB3WGkKxf");
 
 #[program]
 pub mod registro_cedulas {
